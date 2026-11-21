@@ -3,6 +3,15 @@
  * each option (user-facing text in Spanish, per README).
  */
 
+import {
+  blue,
+  cyan,
+  gray,
+  green,
+  magenta,
+  red,
+  yellow,
+} from "./colors.ts";
 import { ApiError, fetchTemperature, geocodeCity } from "./api.ts";
 import type { City, Config } from "./storage.ts";
 import { findCityIndex, saveConfig } from "./storage.ts";
@@ -67,18 +76,27 @@ export function closeMenu(): void {
 
 // ---- Rendering ----------------------------------------------------------
 
+/** Renders one menu line: the whole option in its semantic color. */
+function option(
+  number: string,
+  label: string,
+  color: (text: string) => string,
+): string {
+  return `  ${color(`${number}. ${label}`)}`;
+}
+
 export function renderMenu(config: Config): void {
-  console.log(LINE);
-  console.log("         WEATHER CLI");
-  console.log(LINE);
-  console.log("  1. Clima de ciudad default");
-  console.log(`  2. Clima de todas las ciudades (${config.cities.length})`);
-  console.log("  3. Buscar y agregar ciudad");
-  console.log("  4. Eliminar ciudad");
-  console.log("  5. Establecer ciudad default");
-  console.log(`  8. Ajustes (${UNIT_SYMBOL[config.unit]})`);
-  console.log("  9. Salir");
-  console.log(LINE);
+  console.log(cyan(LINE));
+  console.log(cyan("         WEATHER CLI"));
+  console.log(cyan(LINE));
+  console.log(option("1", "Clima de ciudad default", cyan));
+  console.log(option("2", `Clima de todas las ciudades (${config.cities.length})`, blue));
+  console.log(option("3", "Buscar y agregar ciudad", green));
+  console.log(option("4", "Eliminar ciudad", red));
+  console.log(option("5", "Establecer ciudad default", magenta));
+  console.log(option("8", `Ajustes (${UNIT_SYMBOL[config.unit]})`, yellow));
+  console.log(option("9", "Salir", gray));
+  console.log(cyan(LINE));
 }
 
 function listCities(config: Config): void {
@@ -102,11 +120,11 @@ async function showWeatherFor(city: City, config: Config): Promise<void> {
       config.unit,
     );
     console.log(
-      `  ${cityNameLabel(city)}: ${temperature} ${UNIT_SYMBOL[config.unit]}`,
+      `  ${cityNameLabel(city)}: ${yellow(`${temperature} ${UNIT_SYMBOL[config.unit]}`)}`,
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.log(`  No se pudo obtener el clima de ${city.name}: ${message}`);
+    console.log(red(`  No se pudo obtener el clima de ${city.name}: ${message}`));
   }
 }
 
@@ -142,7 +160,7 @@ async function showAllWeather(config: Config): Promise<void> {
 async function addCity(config: Config): Promise<void> {
   const name = (await ask("  Nombre de la ciudad: ")).trim();
   if (name === "") {
-    console.log("  Nombre vacío, cancelado.");
+    console.log(red("  Nombre vacío, cancelado."));
     return;
   }
 
@@ -151,13 +169,13 @@ async function addCity(config: Config): Promise<void> {
     results = await geocodeCity(name);
   } catch (error) {
     const message = error instanceof ApiError ? error.message : String(error);
-    console.log(`  Error al buscar la ciudad: ${message}`);
+    console.log(red(`  Error al buscar la ciudad: ${message}`));
     return;
   }
 
   const result = results[0];
   if (result === undefined) {
-    console.log(`  No se encontró ninguna ciudad llamada "${name}".`);
+    console.log(red(`  No se encontró ninguna ciudad llamada "${name}".`));
     return;
   }
 
@@ -168,7 +186,7 @@ async function addCity(config: Config): Promise<void> {
   );
 
   if (findCityIndex(config, result.name) !== -1) {
-    console.log("  Esa ciudad ya está guardada.");
+    console.log(red("  Esa ciudad ya está guardada."));
     return;
   }
 
@@ -186,7 +204,7 @@ async function addCity(config: Config): Promise<void> {
   };
   config.cities.push(city);
   await saveConfig(config);
-  console.log(`  ${city.name} agregada correctamente.`);
+  console.log(green(`  ${city.name} agregada correctamente.`));
 }
 
 // ---- Options 4 / 5: remove / set default ---------------------------------
@@ -216,7 +234,7 @@ async function removeCity(config: Config): Promise<void> {
   const input = (await ask(`  Número a eliminar (1-${config.cities.length}): `)).trim();
   const index = parseCityIndex(input, config.cities);
   if (index === null) {
-    console.log("  Número no válido.");
+    console.log(red("  Número no válido."));
     return;
   }
 
@@ -228,8 +246,8 @@ async function removeCity(config: Config): Promise<void> {
   await saveConfig(config);
   console.log(
     removed === undefined
-      ? "  Número no válido."
-      : `  ${removed.name} eliminada.`,
+      ? red("  Número no válido.")
+      : green(`  ${removed.name} eliminada.`),
   );
 }
 
@@ -243,37 +261,37 @@ async function setDefaultCity(config: Config): Promise<void> {
   const input = (await ask(`  Número de la default (1-${config.cities.length}): `)).trim();
   const index = parseCityIndex(input, config.cities);
   if (index === null) {
-    console.log("  Número no válido.");
+    console.log(red("  Número no válido."));
     return;
   }
 
   const city = config.cities[index];
   if (city === undefined) {
-    console.log("  Número no válido.");
+    console.log(red("  Número no válido."));
     return;
   }
 
   config.defaultCity = city.name;
   await saveConfig(config);
-  console.log(`  ${city.name} es ahora la ciudad default.`);
+  console.log(green(`  ${city.name} es ahora la ciudad default.`));
 }
 
 // ---- Option 8: settings ---------------------------------------------------
 
 async function changeUnit(config: Config): Promise<void> {
-  console.log(`  Unidad actual: ${UNIT_SYMBOL[config.unit]}`);
+  console.log(`  Unidad actual: ${yellow(UNIT_SYMBOL[config.unit])}`);
   console.log("  1. °C (celsius)");
   console.log("  2. °F (fahrenheit)");
   const input = (await ask("  Elige la unidad: ")).trim();
   const unit = input === "1" ? "celsius" : input === "2" ? "fahrenheit" : null;
   if (unit === null) {
-    console.log("  Opción no válida.");
+    console.log(red("  Opción no válida."));
     return;
   }
 
   config.unit = unit;
   await saveConfig(config);
-  console.log(`  Unidad cambiada a ${UNIT_SYMBOL[unit]}.`);
+  console.log(green(`  Unidad cambiada a ${UNIT_SYMBOL[unit]}.`));
 }
 
 // ---- Dispatch -------------------------------------------------------------
@@ -302,6 +320,6 @@ export async function handleOption(
       await changeUnit(config);
       break;
     default:
-      console.log("  Opción no válida.");
+      console.log(red("  Opción no válida."));
   }
 }

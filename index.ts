@@ -4,6 +4,7 @@
  * or the input stream closes.
  */
 
+import { green } from "./src/colors.ts";
 import { ask, closeMenu, handleOption, isInputClosed, renderMenu } from "./src/menu.ts";
 import { loadConfig, saveConfig } from "./src/storage.ts";
 
@@ -32,7 +33,7 @@ try {
 }
 
 await saveConfig(config);
-console.log("  ¡Hasta luego!");
+console.log(green("  ¡Hasta luego!"));
 // Bun.stdin.stream() keeps the event loop alive while the stream is open
 // (always the case on an interactive TTY), so exit explicitly.
 process.exit(0);
