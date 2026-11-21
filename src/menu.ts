@@ -13,6 +13,7 @@ import {
   yellow,
 } from "./colors.ts";
 import { ApiError, fetchTemperature, geocodeCity } from "./api.ts";
+import type { GeocodingResult } from "./api.ts";
 import type { City, Config } from "./storage.ts";
 import { findCityIndex, saveConfig } from "./storage.ts";
 
@@ -157,6 +158,34 @@ async function showAllWeather(config: Config): Promise<void> {
 
 // ---- Option 3: search and add -------------------------------------------
 
+function resultLabel(result: GeocodingResult): string {
+  const region = [result.admin1, result.country].filter(Boolean).join(", ");
+  return region === "" ? result.name : `${result.name} — ${region}`;
+}
+
+/** Asks the user to pick one of several geocoding matches. */
+async function pickResult(
+  results: GeocodingResult[],
+): Promise<GeocodingResult | undefined> {
+  console.log(`  Se encontraron ${results.length} coincidencias:`);
+  results.forEach((result, index) => {
+    console.log(`  ${index + 1}. ${resultLabel(result)}`);
+  });
+
+  const input =
+    (await ask(`  Elige una (1-${results.length}) o Enter para cancelar: `))
+      .trim();
+  if (input === "") {
+    return undefined;
+  }
+  const index = parseCityIndex(input, results.length);
+  if (index === null) {
+    console.log(red("  Número no válido."));
+    return undefined;
+  }
+  return results[index];
+}
+
 async function addCity(config: Config): Promise<void> {
   const name = (await ask("  Nombre de la ciudad: ")).trim();
   if (name === "") {
@@ -173,14 +202,21 @@ async function addCity(config: Config): Promise<void> {
     return;
   }
 
-  const result = results[0];
-  if (result === undefined) {
+  if (results.length === 0) {
     console.log(red(`  No se encontró ninguna ciudad llamada "${name}".`));
     return;
   }
 
-  const region = [result.admin1, result.country].filter(Boolean).join(", ");
-  const label = region === "" ? result.name : `${result.name} — ${region}`;
+  // Single match: skip the picker. Several matches: let the user choose.
+  const result = results.length === 1
+    ? results[0]
+    : await pickResult(results);
+  if (result === undefined) {
+    console.log("  Ciudad no agregada.");
+    return;
+  }
+
+  const label = resultLabel(result);
   console.log(
     `  Encontrada: ${label} (${result.latitude}, ${result.longitude})`,
   );
@@ -211,13 +247,13 @@ async function addCity(config: Config): Promise<void> {
 
 function parseCityIndex(
   input: string,
-  cities: City[],
+  count: number,
 ): number | null {
   const number = Number.parseInt(input, 10);
   if (
     Number.isNaN(number) ||
     number < 1 ||
-    number > cities.length
+    number > count
   ) {
     return null;
   }
@@ -232,7 +268,7 @@ async function removeCity(config: Config): Promise<void> {
 
   listCities(config);
   const input = (await ask(`  Número a eliminar (1-${config.cities.length}): `)).trim();
-  const index = parseCityIndex(input, config.cities);
+  const index = parseCityIndex(input, config.cities.length);
   if (index === null) {
     console.log(red("  Número no válido."));
     return;
@@ -259,7 +295,7 @@ async function setDefaultCity(config: Config): Promise<void> {
 
   listCities(config);
   const input = (await ask(`  Número de la default (1-${config.cities.length}): `)).trim();
-  const index = parseCityIndex(input, config.cities);
+  const index = parseCityIndex(input, config.cities.length);
   if (index === null) {
     console.log(red("  Número no válido."));
     return;

@@ -34,10 +34,11 @@ export class ApiError extends Error {}
 /**
  * Step 1: Geocoding API.
  * Resolves a city name to coordinates. Returns matching results (may be empty).
+ * Defaults to 5 results so ambiguous names can be disambiguated by the user.
  */
 export async function geocodeCity(
   name: string,
-  count = 1,
+  count = 5,
 ): Promise<GeocodingResult[]> {
   const url =
     `${GEOCODING_URL}?name=${encodeURIComponent(name)}` +
