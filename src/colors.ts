@@ -14,8 +14,17 @@
 const enabled =
   process.stdout.isTTY === true && process.env["NO_COLOR"] === undefined;
 
-function wrap(code: string, text: string): string {
-  return enabled ? `\x1b[${code}m${text}\x1b[0m` : text;
+function wrap(codes: string, text: string): string {
+  return enabled ? `\x1b[${codes}m${text}\x1b[0m` : text;
+}
+
+/**
+ * Generic style combiner: `styled("3;36", text)` renders text in
+ * italic cyan. Used when a role needs a style + color pair that has
+ * no dedicated helper.
+ */
+export function styled(codes: string, text: string): string {
+  return wrap(codes, text);
 }
 
 export function cyan(text: string): string {

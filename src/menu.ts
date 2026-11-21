@@ -10,12 +10,19 @@ import {
   green,
   magenta,
   red,
+  styled,
   yellow,
 } from "./colors.ts";
-import { ApiError, fetchTemperature, geocodeCity } from "./api.ts";
-import type { GeocodingResult } from "./api.ts";
+import {
+  ApiError,
+  describeWeatherCode,
+  fetchDailyForecast,
+  fetchTemperature,
+  geocodeCity,
+} from "./api.ts";
 import type { City, Config } from "./storage.ts";
 import { findCityIndex, saveConfig } from "./storage.ts";
+import type { GeocodingResult } from "./api.ts";
 
 const LINE = "════════════════════════════════════════";
 const UNIT_SYMBOL = { celsius: "°C", fahrenheit: "°F" } as const;
@@ -95,6 +102,7 @@ export function renderMenu(config: Config): void {
   console.log(option("3", "Buscar y agregar ciudad", green));
   console.log(option("4", "Eliminar ciudad", red));
   console.log(option("5", "Establecer ciudad default", magenta));
+  console.log(option("6", "Pronóstico 7 días", cyan));
   console.log(option("8", `Ajustes (${UNIT_SYMBOL[config.unit]})`, yellow));
   console.log(option("9", "Salir", gray));
   console.log(cyan(LINE));
@@ -153,6 +161,92 @@ async function showAllWeather(config: Config): Promise<void> {
   }
   for (const city of config.cities) {
     await showWeatherFor(city, config);
+  }
+}
+
+// ---- Option 6: 7-day forecast ---------------------------------------------
+
+const WEEKDAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"] as const;
+
+/**
+ * ANSI codes (italic + color) for a forecast description, based on the
+ * WMO code's severity: cyan = clear, gray = overcast/fog, bright blue =
+ * rain, bright white = snow, bright red = storm.
+ */
+function weatherCodeStyle(code: number): string {
+  if (code <= 2) return "3;36";
+  if (code === 3 || code === 45 || code === 48) return "3;90";
+  if (
+    (code >= 51 && code <= 67) || (code >= 80 && code <= 82)
+  ) return "3;94";
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "3;97";
+  if (code >= 95) return "3;91";
+  return "3;90";
+}
+
+/** Formats an ISO date (yyyy-mm-dd) as "día dd/mm", local (no UTC shift). */
+function weekdayLabel(isoDate: string): string {
+  const [year = 1970, month = 1, day = 1] =
+    isoDate.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const weekday = WEEKDAYS[date.getDay()] ?? "";
+  return `${weekday} ${day}/${month}`;
+}
+
+async function showDailyForecast(config: Config): Promise<void> {
+  if (config.cities.length === 0) {
+    console.log("  No hay ciudades guardadas. Usa la opción 3 para agregar.");
+    return;
+  }
+
+  listCities(config);
+  const input = (
+    await ask(
+      `  Número de la ciudad (1-${config.cities.length}) o Enter para la default: `,
+    )
+  ).trim();
+
+  let city;
+  if (input === "") {
+    const defaultName = config.defaultCity;
+    if (defaultName === null) {
+      console.log("  No hay ciudad default establecida. Usa la opción 5.");
+      return;
+    }
+    city = config.cities.find(
+      (candidate) => candidate.name.toLowerCase() === defaultName.toLowerCase(),
+    );
+  } else {
+    const index = parseCityIndex(input, config.cities.length);
+    if (index === null) {
+      console.log(red("  Número no válido."));
+      return;
+    }
+    city = config.cities[index];
+  }
+
+  if (city === undefined) {
+    console.log("  No hay ciudad default establecida. Usa la opción 5.");
+    return;
+  }
+
+  try {
+    const forecast = await fetchDailyForecast(
+      city.latitude,
+      city.longitude,
+      config.unit,
+    );
+    console.log(`  Pronóstico 7 días — ${cityNameLabel(city)} (${UNIT_SYMBOL[config.unit]}):`);
+    for (const day of forecast) {
+      const temps = yellow(`${day.max}° / ${day.min}°`);
+      const description = day.code === null
+        ? ""
+        : `  ${styled(weatherCodeStyle(day.code), describeWeatherCode(day.code))}`;
+      console.log(`    ${weekdayLabel(day.date)}: ${temps}${description}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(red(`  No se pudo obtener el pronóstico de ${city.name}: ${message}`));
   }
 }
 
@@ -351,6 +445,9 @@ export async function handleOption(
       break;
     case "5":
       await setDefaultCity(config);
+      break;
+    case "6":
+      await showDailyForecast(config);
       break;
     case "8":
       await changeUnit(config);
