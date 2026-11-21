@@ -4,9 +4,10 @@
  * or the input stream closes.
  */
 
-import { green } from "./src/colors.ts";
-import { ask, closeMenu, handleOption, isInputClosed, renderMenu } from "./src/menu.ts";
-import { loadConfig, saveConfig } from "./src/storage.ts";
+import { green } from "./utils/colors.ts";
+import { ask, closeInput, isInputClosed } from "./presentation/input.ts";
+import { handleOption, renderMenu } from "./presentation/menu.ts";
+import { loadConfig, saveSettings } from "./storage/settingsStorage.ts";
 
 const config = await loadConfig();
 
@@ -29,10 +30,10 @@ try {
     console.log("");
   }
 } finally {
-  closeMenu();
+  closeInput();
 }
 
-await saveConfig(config);
+await saveSettings(config);
 console.log(green("  ¡Hasta luego!"));
 // Bun.stdin.stream() keeps the event loop alive while the stream is open
 // (always the case on an interactive TTY), so exit explicitly.

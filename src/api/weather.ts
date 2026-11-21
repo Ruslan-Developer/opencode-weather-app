@@ -1,27 +1,13 @@
 /**
- * HTTP calls to the public Open-Meteo APIs (no API key required).
- *
- * Flow (two steps, per README):
- *  1. Geocoding API  -> resolve a city name to latitude/longitude
- *  2. Forecast API   -> fetch the current temperature for those coordinates
+ * Open-Meteo Forecast API (no API key required).
+ * Fetches the current temperature and the daily forecast
+ * (max/min + WMO weather codes) for given coordinates.
  */
 
-const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+import { ApiError } from "./apiError.ts";
+import type { DailyForecastDay, TemperatureUnit } from "../types/Weather.ts";
+
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
-
-export type TemperatureUnit = "celsius" | "fahrenheit";
-
-export interface GeocodingResult {
-  name: string;
-  country: string | null;
-  admin1: string | null;
-  latitude: number;
-  longitude: number;
-}
-
-interface GeocodingResponse {
-  results?: GeocodingResult[];
-}
 
 interface ForecastResponse {
   current?: {
@@ -35,39 +21,7 @@ interface ForecastResponse {
   };
 }
 
-export class ApiError extends Error {}
-
 /**
- * Step 1: Geocoding API.
- * Resolves a city name to coordinates. Returns matching results (may be empty).
- * Defaults to 5 results so ambiguous names can be disambiguated by the user.
- */
-export async function geocodeCity(
-  name: string,
-  count = 5,
-): Promise<GeocodingResult[]> {
-  const url =
-    `${GEOCODING_URL}?name=${encodeURIComponent(name)}` +
-    `&count=${count}&language=es&format=json`;
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new ApiError(`Geocoding API responded with status ${response.status}`);
-  }
-
-  const data = (await response.json()) as GeocodingResponse;
-  const results = data.results ?? [];
-  return results.map((result) => ({
-    name: result.name,
-    country: result.country ?? null,
-    admin1: result.admin1 ?? null,
-    latitude: result.latitude,
-    longitude: result.longitude,
-  }));
-}
-
-/**
- * Step 2: Forecast API.
  * Fetches the current temperature (in the requested unit) for coordinates.
  */
 export async function fetchTemperature(
@@ -90,15 +44,6 @@ export async function fetchTemperature(
     throw new ApiError("Forecast API did not return a temperature");
   }
   return temperature;
-}
-
-export interface DailyForecastDay {
-  /** ISO date (yyyy-mm-dd), local to the city's timezone. */
-  date: string;
-  max: number;
-  min: number;
-  /** WMO weather interpretation code, or null if not reported. */
-  code: number | null;
 }
 
 /** WMO weather interpretation codes -> short Spanish description. */
@@ -139,7 +84,7 @@ export function describeWeatherCode(code: number): string {
 }
 
 /**
- * Daily forecast variant of step 2: max/min temperature (and weather code)
+ * Daily forecast variant: max/min temperature (and weather code)
  * for the next `days` days for the given coordinates.
  */
 export async function fetchDailyForecast(

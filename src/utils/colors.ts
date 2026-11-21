@@ -27,6 +27,22 @@ export function styled(codes: string, text: string): string {
   return wrap(codes, text);
 }
 
+/**
+ * ANSI codes (italic + color) for a forecast description, based on the
+ * WMO code's severity: cyan = clear, gray = overcast/fog, bright blue =
+ * rain, bright white = snow, bright red = storm.
+ */
+export function weatherCodeStyle(code: number): string {
+  if (code <= 2) return "3;36";
+  if (code === 3 || code === 45 || code === 48) return "3;90";
+  if (
+    (code >= 51 && code <= 67) || (code >= 80 && code <= 82)
+  ) return "3;94";
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "3;97";
+  if (code >= 95) return "3;91";
+  return "3;90";
+}
+
 export function cyan(text: string): string {
   return wrap("36", text);
 }

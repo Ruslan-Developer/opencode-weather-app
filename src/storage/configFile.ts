@@ -1,45 +1,22 @@
 /**
- * Persistence for saved cities, the default city and the temperature unit.
+ * Low-level persistence for the config file (~/.weather-cli.json).
  * Stored as JSON in the user's home directory so the compiled binary
- * works from any folder.
+ * works from any folder. This is the only module that touches the
+ * disk; the storage/* public modules build on it.
  */
 
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { isCity } from "../types/City.ts";
+import type { Config } from "../types/Config.ts";
 
-export interface City {
-  name: string;
-  country: string | null;
-  latitude: number;
-  longitude: number;
-}
-
-export interface Config {
-  cities: City[];
-  defaultCity: string | null;
-  unit: "celsius" | "fahrenheit";
-}
-
-const CONFIG_PATH = join(homedir(), ".weather-cli.json");
+export const CONFIG_PATH = join(homedir(), ".weather-cli.json");
 
 const DEFAULT_CONFIG: Config = {
   cities: [],
   defaultCity: null,
   unit: "celsius",
 };
-
-function isCity(value: unknown): value is City {
-  if (typeof value !== "object" || value === null) return false;
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.name === "string" &&
-    typeof record.latitude === "number" &&
-    typeof record.longitude === "number" &&
-    (record.country === undefined ||
-      record.country === null ||
-      typeof record.country === "string")
-  );
-}
 
 export async function loadConfig(): Promise<Config> {
   const file = Bun.file(CONFIG_PATH);
@@ -65,10 +42,4 @@ export async function loadConfig(): Promise<Config> {
 
 export async function saveConfig(config: Config): Promise<void> {
   await Bun.write(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`);
-}
-
-export function findCityIndex(config: Config, name: string): number {
-  return config.cities.findIndex(
-    (city) => city.name.toLowerCase() === name.toLowerCase(),
-  );
 }

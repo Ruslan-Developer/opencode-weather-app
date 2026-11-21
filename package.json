@@ -1,13 +1,13 @@
 {
   "name": "02-weather",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "bun run index.ts",
+    "start": "bun run src/index.ts",
     "typecheck": "bun check",
-    "compile": "bun build --compile ./index.ts --outfile dist/weather",
-    "dev": "bun run index.ts --watch"
+    "compile": "bun build --compile ./src/index.ts --outfile dist/weather",
+    "dev": "bun run src/index.ts --watch"
   },
   "devDependencies": {
     "@types/bun": "latest"
