@@ -29,4 +29,5 @@ Esta es la apariencia que deseamos crear
   8. Ajustes (°C)
   9. Salir
 ════════════════════════════════════════
+
   Selecciona una opción: 5
