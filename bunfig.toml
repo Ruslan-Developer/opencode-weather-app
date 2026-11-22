@@ -1,0 +1,6 @@
+# Bun runtime configuration. Only the test runner needs settings.
+
+[test]
+# Runs before any test file loads: redirects the app's home directory
+# to a temp folder so tests never touch the real ~/.weather-cli.json.
+preload = ["./tests/helpers/isolateHome.ts"]
