@@ -26,7 +26,7 @@ jobs:
             artifact: weather-macos-arm64
             binary: dist/weather
           - os: windows-latest
-            artifact: weather-windows-x64
+            artifact: weather-windows-x64.exe
             binary: dist/weather.exe
     steps:
       - uses: actions/checkout@v4
